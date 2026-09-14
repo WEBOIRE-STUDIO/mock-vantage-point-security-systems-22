@@ -3,9 +3,9 @@
   "heroVariant": "geometric-angled",
   "serviceLayout": "bento-grid",
   "ctaStyle": "gradient",
-  "paletteSeed": 7,
-  "heroSeed": 7,
-  "copySeed": 7,
+  "paletteSeed": 9,
+  "heroSeed": 9,
+  "copySeed": 9,
   "visualSystem": {
     "key": "bold-geometric",
     "label": "Bold Geometric",
