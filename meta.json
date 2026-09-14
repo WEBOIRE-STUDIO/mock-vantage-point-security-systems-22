@@ -3,9 +3,9 @@
   "heroVariant": "geometric-angled",
   "serviceLayout": "bento-grid",
   "ctaStyle": "gradient",
-  "paletteSeed": 1,
-  "heroSeed": 1,
-  "copySeed": 1,
+  "paletteSeed": 2,
+  "heroSeed": 2,
+  "copySeed": 2,
   "visualSystem": {
     "key": "bold-geometric",
     "label": "Bold Geometric",
@@ -23,26 +23,26 @@
   "selectionSignals": {
     "servicesCount": 6,
     "imagePoolCount": 2,
-    "hasRelevantImagery": true
+    "hasRelevantImagery": false
   },
   "resolvedVisualDirection": {
-    "palette_source": "template_default",
-    "palette_key": "deep-blue",
+    "palette_source": "visual_system_locked",
+    "palette_key": "electric-contrast",
     "palette": {
-      "key": "deep-blue",
-      "primary": "#1864ab",
-      "primaryDark": "#0b4a8a",
-      "accent": "#4dabf7",
-      "textDark": "#101820",
+      "key": "electric-contrast",
+      "primary": "#12121a",
+      "primaryDark": "#000000",
+      "accent": "#ff3d6e",
+      "textDark": "#0c0c10",
       "textOnPrimary": "#ffffff",
-      "bgLight": "#f4f9ff",
-      "bgAlt": "#e9f3ff",
-      "border": "#cfe3fa",
-      "radius": "8px",
+      "bgLight": "#fcfcfd",
+      "bgAlt": "#eef0f5",
+      "border": "#dcdfe8",
+      "radius": "2px",
       "ctaStyle": "gradient",
-      "headingFont": "Poppins",
+      "headingFont": "Manrope",
       "bodyFont": "Inter",
-      "googleFonts": "Poppins:wght@600;700;800|Inter:wght@400;500;600"
+      "googleFonts": "Manrope:wght@700;800;900|Inter:wght@400;500;600"
     },
     "hero_variant": "geometric-angled",
     "section_style": "card-heavy",
@@ -57,6 +57,6 @@
     "motion_preset_content_gated": false,
     "services_count": 6,
     "image_pool_count": 2,
-    "has_relevant_imagery": true
+    "has_relevant_imagery": false
   }
 }
