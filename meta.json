@@ -3,9 +3,9 @@
   "heroVariant": "geometric-angled",
   "serviceLayout": "bento-grid",
   "ctaStyle": "gradient",
-  "paletteSeed": 2,
-  "heroSeed": 2,
-  "copySeed": 2,
+  "paletteSeed": 7,
+  "heroSeed": 7,
+  "copySeed": 7,
   "visualSystem": {
     "key": "bold-geometric",
     "label": "Bold Geometric",
@@ -19,6 +19,16 @@
     "label": "Bold Geometric Motion",
     "selectionReason": "visual system default (bold-geometric → bold-geometric-motion)",
     "contentGated": false
+  },
+  "experimentalPreset": {
+    "key": "geometric-playground",
+    "label": "Geometric Playground",
+    "techniques": [
+      "scan-line",
+      "rotating-shapes",
+      "tilt-3d"
+    ],
+    "selectionReason": "explicitly forced"
   },
   "selectionSignals": {
     "servicesCount": 6,
@@ -57,6 +67,9 @@
     "motion_preset_content_gated": false,
     "services_count": 6,
     "image_pool_count": 2,
-    "has_relevant_imagery": false
+    "has_relevant_imagery": false,
+    "experimental_preset": "geometric-playground",
+    "experimental_preset_label": "Geometric Playground",
+    "experimental_preset_reason": "explicitly forced"
   }
 }
