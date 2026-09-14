@@ -1048,3 +1048,84 @@ body.motion-bold-geometric-motion .img-clip-reveal.in-view { clip-path: polygon(
   body[class*="motion-"] .split-word > span { transition: none !important; transform: none !important; }
   body.motion-bold-geometric-motion .img-clip-reveal { clip-path: none !important; opacity: 1 !important; transform: none !important; }
 }
+
+/* =====================================================================
+   HERO: ABSTRACT / DESIGN-LED FALLBACK — used INSTEAD of a real photo
+   whenever the image library has no genuine on-topic coverage for this
+   business (see hasRelevantImagery / heroMedia() in sections.js). A wrong-
+   feeling stock photo (construction workers for an architecture firm, a
+   generic office for an IT consultancy) reads as more broken than an
+   intentional abstract composition, and each visual system gets its own
+   treatment here rather than one shared gradient everywhere.
+   ===================================================================== */
+.hero-abstract-bg {
+  position: relative; overflow: hidden;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 55%, var(--accent) 130%);
+}
+.hero-abstract-bg::before, .hero-abstract-bg::after {
+  content: ''; position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55;
+}
+.hero-abstract-bg::before { width: 60%; height: 60%; top: -10%; left: -10%; background: var(--accent); }
+.hero-abstract-bg::after { width: 50%; height: 50%; bottom: -15%; right: -10%; background: var(--primary-dark); }
+
+/* Bold Geometric: angled shape fragments, matching the hero's own shapes. */
+body.vsys-bold-geometric .hero-abstract-bg { background: var(--primary); }
+body.vsys-bold-geometric .hero-abstract-bg::before {
+  border-radius: 0; filter: none; opacity: .9; width: 55%; height: 140%; top: -20%; left: 55%;
+  background: var(--accent); clip-path: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+}
+body.vsys-bold-geometric .hero-abstract-bg::after {
+  border-radius: 0; filter: none; opacity: .5; width: 40%; height: 90%; bottom: -10%; left: -5%;
+  background: var(--primary-dark); clip-path: polygon(0 0, 60% 0, 100% 100%, 40% 100%);
+}
+
+/* Clean Tech / Glass: layered translucent glass panes, not solid blobs. */
+body.vsys-clean-tech-glass .hero-abstract-bg { background: linear-gradient(160deg, var(--bg-alt) 0%, var(--bg-light) 100%); }
+body.vsys-clean-tech-glass .hero-abstract-bg::before,
+body.vsys-clean-tech-glass .hero-abstract-bg::after {
+  filter: none; opacity: 1; border-radius: 24px; background: rgba(255,255,255,.5);
+  border: 1px solid rgba(255,255,255,.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+body.vsys-clean-tech-glass .hero-abstract-bg::before { width: 46%; height: 62%; top: 8%; left: 8%; transform: rotate(-6deg); }
+body.vsys-clean-tech-glass .hero-abstract-bg::after {
+  width: 40%; height: 50%; bottom: 6%; right: 6%; transform: rotate(8deg);
+  background: rgba(56,189,248,.18); border-color: rgba(56,189,248,.4);
+}
+
+/* Editorial / Oversized Typography: fine hairline rules instead of blobs —
+   matches the hero's own hairline-rule motif. */
+body.vsys-editorial-oversized .hero-abstract-bg {
+  background: repeating-linear-gradient(115deg, var(--border) 0px, var(--border) 1px, transparent 1px, transparent 34px), var(--bg-alt);
+}
+body.vsys-editorial-oversized .hero-abstract-bg::before,
+body.vsys-editorial-oversized .hero-abstract-bg::after { display: none; }
+
+/* =====================================================================
+   RECURRING VISUAL-SYSTEM MOTIFS — each system's signature technique
+   reappears past the hero (services/CTA/contact), so the identity doesn't
+   evaporate after the first scroll.
+   ===================================================================== */
+
+/* Bold Geometric: angled shape fragments echo through cards and the CTA. */
+body.vsys-bold-geometric .bento-cell.card-bordered { position: relative; overflow: hidden; }
+body.vsys-bold-geometric .bento-cell.card-bordered::before {
+  content: ''; position: absolute; top: -30%; right: -30%; width: 60%; height: 60%;
+  background: var(--accent); opacity: .1; clip-path: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+  pointer-events: none;
+}
+body.vsys-bold-geometric .cta-band { position: relative; overflow: hidden; }
+body.vsys-bold-geometric .cta-band::before {
+  content: ''; position: absolute; top: -20%; left: -8%; width: 46%; height: 140%;
+  background: rgba(255,255,255,.08); clip-path: polygon(30% 0, 100% 0, 70% 100%, 0 100%);
+  pointer-events: none;
+}
+
+/* Clean Tech / Glass: frosted-glass layering continues past the hero/cards
+   into Contact and the CTA action panel. */
+body.vsys-clean-tech-glass .contact-editorial-rows {
+  padding: 24px; border-radius: 18px; background: rgba(255,255,255,.55);
+  border: 1px solid rgba(255,255,255,.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+body.vsys-clean-tech-glass .cta-bento-action {
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
