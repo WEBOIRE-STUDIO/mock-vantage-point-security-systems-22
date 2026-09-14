@@ -1,0 +1,13 @@
+:root {
+  --primary: #1864ab;
+  --primary-dark: #0b4a8a;
+  --accent: #4dabf7;
+  --text-dark: #101820;
+  --text-on-primary: #ffffff;
+  --bg-light: #f4f9ff;
+  --bg-alt: #e9f3ff;
+  --border: #cfe3fa;
+  --radius: 8px;
+  --font-heading: 'Poppins';
+  --font-body: 'Inter';
+}
