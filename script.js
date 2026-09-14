@@ -29,6 +29,7 @@
   };
   var motionKey = (document.body.className.match(/motion-([a-z-]+)/) || [])[1];
   var wordTiming = HERO_WORD_TIMING[motionKey] || HERO_WORD_TIMING['editorial-split-mask'];
+  var experimentalKey = (document.body.className.match(/experimental-([a-z0-9-]+)/) || [])[1];
 
   // ---- Mobile-safe nav ----
   var toggle = document.getElementById('navToggle');
@@ -201,7 +202,11 @@
       // the next section's content reached that scroll position. A plain
       // opacity fade never changes box size, so the next section is always
       // exactly where it needs to be underneath — no gap is possible.
-      if (heroSection) {
+      // Geometric Playground pins the hero for its own scan-progress scene
+      // below (a second, independent ScrollTrigger on the same element with
+      // pin:true) — fading it out here at the same time would fight that
+      // pinned scene, so it opts out of the generic exit dissolve.
+      if (heroSection && experimentalKey !== 'geometric-playground') {
         window.gsap.to(heroSection, {
           opacity: 0.15, ease: 'none',
           scrollTrigger: { trigger: heroSection, start: 'top top', end: 'bottom top', scrub: true },
@@ -331,7 +336,6 @@
   // ---- Card tilt (pointer-driven, only when the motion preset OR the
   // experimental layer's 'tilt-3d' technique asks for it — the experimental
   // layer gets a stronger tilt angle for a more real-perspective feel). ----
-  var experimentalKey = (document.body.className.match(/experimental-([a-z0-9-]+)/) || [])[1];
   var EXPERIMENTAL_TILT_PRESETS = { 'glass-3d-space': 1, 'layered-depth': 1, 'geometric-playground': 1, 'webgl-abstract': 1 };
   var wantsTilt = document.body.classList.contains('cardhover-tilt-depth') || (experimentalKey && EXPERIMENTAL_TILT_PRESETS[experimentalKey]);
   var tiltDegrees = experimentalKey && EXPERIMENTAL_TILT_PRESETS[experimentalKey] ? 14 : 8;
@@ -355,40 +359,58 @@
   // EXPERIMENTAL MOTION LAYER — optional, rare (see experimentalMotion.js).
   // Everything below only runs when the corresponding markup/body class is
   // present, so a normal demo without this layer pays zero JS cost for it.
-  // Canvas + CSS 3D transforms, not Three.js/WebGL — see experimentalMotion.js
-  // for why. Skipped entirely under reduced motion; simplified on mobile.
+  // A real Three.js/WebGL scene for the particle-field technique (lazy-
+  // loaded — see loadThreeJs — only when this technique is actually used),
+  // falling back to a lightweight 2D canvas network field if WebGL is
+  // unavailable or on mobile; CSS 3D transforms for everything else.
+  // Skipped entirely under reduced motion; simplified/static on mobile.
   // =====================================================================
   if (!reducedMotion) {
     var experimentalLayer = document.querySelector('.experimental-layer');
     if (experimentalLayer) {
       var heroForExperimental = experimentalLayer.closest('.hero');
 
-      // ---- Particle field (canvas) — a lightweight drifting node/network
-      // field standing in for a full WebGL scene. Fewer, static-ish
-      // particles on mobile instead of a full animation loop. ----
-      var particleCanvas = experimentalLayer.querySelector('.experimental-particles');
-      if (particleCanvas && heroForExperimental) {
-        var pctx = particleCanvas.getContext('2d');
-        var particleCount = isMobile ? 22 : 60;
+      // ---- Shared: is the hero currently on screen? Every continuous
+      // render loop below (WebGL scene, canvas particle animation) checks
+      // this before scheduling its next frame — "no continuous rendering
+      // when the scene is off-screen." ----
+      var heroIsVisible = true;
+      if (heroForExperimental && 'IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+          heroIsVisible = entries[entries.length - 1].isIntersecting;
+        }, { threshold: 0.01 }).observe(heroForExperimental);
+      }
+
+      function hexColorFromCssVar(varName, fallback) {
+        var raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) return raw;
+        return fallback;
+      }
+
+      // ---- 2D canvas particle field — the fallback used when WebGL is
+      // unavailable, fails to load, or on mobile (mobile never attempts
+      // WebGL at all: "mobile should use a simplified static/CSS version"). ----
+      function start2dParticles(canvas) {
+        var pctx = canvas.getContext('2d');
+        if (!pctx) return;
+        var particleCount = isMobile ? 22 : 60; // strict particle-count ceiling
         var particles = [];
         var resizeCanvas = function () {
-          particleCanvas.width = heroForExperimental.clientWidth;
-          particleCanvas.height = heroForExperimental.clientHeight;
+          canvas.width = heroForExperimental.clientWidth;
+          canvas.height = heroForExperimental.clientHeight;
         };
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas, { passive: true });
         for (var pi = 0; pi < particleCount; pi++) {
           particles.push({
-            x: Math.random() * particleCanvas.width,
-            y: Math.random() * particleCanvas.height,
-            vx: (Math.random() - 0.5) * 0.25,
-            vy: (Math.random() - 0.5) * 0.25,
+            x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
             r: Math.random() * 1.8 + 0.6,
           });
         }
-        var accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7dd3fc';
+        var accentColor = hexColorFromCssVar('--accent', '#7dd3fc');
         var drawParticles = function () {
-          var w = particleCanvas.width, h = particleCanvas.height;
+          var w = canvas.width, h = canvas.height;
           pctx.clearRect(0, 0, w, h);
           for (var i = 0; i < particles.length; i++) {
             var p = particles[i];
@@ -400,7 +422,6 @@
             pctx.fillStyle = accentColor;
             pctx.globalAlpha = 0.75;
             pctx.fill();
-            // Connect nearby particles — the "network" read.
             for (var j = i + 1; j < particles.length; j++) {
               var q = particles[j];
               var dx = p.x - q.x, dy = p.y - q.y;
@@ -422,9 +443,162 @@
           drawParticles(); // one static frame — no animation loop cost on mobile
         } else {
           (function animateParticles() {
-            drawParticles();
+            if (heroIsVisible) drawParticles();
             requestAnimationFrame(animateParticles);
           })();
+        }
+      }
+
+      // ---- Real Three.js/WebGL scene: floating glass planes + depth-
+      // separated network nodes with connecting lines, a real perspective
+      // camera, pointer-driven camera movement, and a scroll-linked camera
+      // dolly. Lazy-loaded — the library is only fetched when a preset with
+      // the particle-field technique is actually present on the page. ----
+      function webglSupported() {
+        try {
+          var c = document.createElement('canvas');
+          return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+        } catch (e) { return false; }
+      }
+
+      function loadThreeJs(onDone) {
+        if (window.THREE) { onDone(true); return; }
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        s.onload = function () { onDone(!!window.THREE); };
+        s.onerror = function () { onDone(false); };
+        document.head.appendChild(s);
+      }
+
+      function start3dScene(canvas) {
+        try {
+          var THREE = window.THREE;
+          var renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75)); // capped for high-DPI perf
+          var w = heroForExperimental.clientWidth, h = heroForExperimental.clientHeight;
+          renderer.setSize(w, h, false);
+
+          var accentColor = new THREE.Color(hexColorFromCssVar('--accent', '#7dd3fc'));
+
+          var scene = new THREE.Scene();
+          scene.fog = new THREE.FogExp2(0x000000, 0.05);
+
+          var camera = new THREE.PerspectiveCamera(52, w / h, 0.1, 100);
+          var baseCameraZ = 16;
+          camera.position.set(0, 0, baseCameraZ);
+
+          scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+          var pointLight = new THREE.PointLight(accentColor, 1.4, 60);
+          pointLight.position.set(6, 6, 10);
+          scene.add(pointLight);
+
+          // Depth-separated network nodes — a strict count ceiling for perf.
+          var NODE_COUNT = isMobile ? 0 : 42;
+          var nodeGeo = new THREE.SphereGeometry(0.055, 8, 8);
+          var nodeMat = new THREE.MeshBasicMaterial({ color: accentColor });
+          var nodes = [];
+          for (var ni = 0; ni < NODE_COUNT; ni++) {
+            var mesh = new THREE.Mesh(nodeGeo, nodeMat);
+            mesh.position.set((Math.random() - 0.5) * 15, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 13);
+            scene.add(mesh);
+            nodes.push({ mesh: mesh, v: new THREE.Vector3((Math.random() - 0.5) * 0.012, (Math.random() - 0.5) * 0.012, (Math.random() - 0.5) * 0.012) });
+          }
+
+          // Connecting lines that appear/disappear as nodes drift within
+          // range of each other — the "network lines appearing/disappearing
+          // with depth" requirement.
+          var maxSegments = NODE_COUNT * 3;
+          var lineGeo = new THREE.BufferGeometry();
+          var linePositions = new Float32Array(maxSegments * 2 * 3);
+          lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+          var lineMat = new THREE.LineBasicMaterial({ color: accentColor, transparent: true, opacity: 0.28 });
+          var lineSegments = new THREE.LineSegments(lineGeo, lineMat);
+          scene.add(lineSegments);
+
+          // Floating translucent glass planes at distinct Z depths.
+          var planeGeo = new THREE.PlaneGeometry(4.2, 3);
+          var planes = [-6, -1.5, 3.5].map(function (z, idx) {
+            var mat = new THREE.MeshPhysicalMaterial({
+              color: 0xffffff, transparent: true, opacity: 0.07, roughness: 0.25, metalness: 0.05, side: THREE.DoubleSide,
+            });
+            var plane = new THREE.Mesh(planeGeo, mat);
+            plane.position.set((idx - 1) * 3.2, idx % 2 ? 1.1 : -1.1, z);
+            plane.rotation.set(0.12, (idx - 1) * 0.35, 0);
+            scene.add(plane);
+            return plane;
+          });
+
+          var pointerX = 0, pointerY = 0, scrollProgress = 0;
+          if (!isMobile && window.matchMedia('(pointer: fine)').matches) {
+            heroForExperimental.addEventListener('mousemove', function (e) {
+              var rect = heroForExperimental.getBoundingClientRect();
+              pointerX = (e.clientX - rect.left) / rect.width - 0.5;
+              pointerY = (e.clientY - rect.top) / rect.height - 0.5;
+            });
+          }
+          if (hasScrollTrigger) {
+            window.ScrollTrigger.create({
+              trigger: heroForExperimental, start: 'top top', end: 'bottom top', scrub: true,
+              onUpdate: function (self) { scrollProgress = self.progress; },
+            });
+          }
+
+          function renderFrame() {
+            if (!heroIsVisible) { requestAnimationFrame(renderFrame); return; } // paused, not stopped — resumes on scroll back
+            camera.position.x += (pointerX * 3 - camera.position.x) * 0.04;
+            camera.position.y += (-pointerY * 1.8 - camera.position.y) * 0.04;
+            camera.position.z = baseCameraZ - scrollProgress * 5; // scroll-linked camera dolly
+            camera.lookAt(0, 0, 0);
+
+            var segCount = 0;
+            var posAttr = lineGeo.attributes.position;
+            for (var a = 0; a < nodes.length; a++) {
+              var na = nodes[a];
+              na.mesh.position.add(na.v);
+              if (Math.abs(na.mesh.position.x) > 7.5) na.v.x *= -1;
+              if (Math.abs(na.mesh.position.y) > 4.5) na.v.y *= -1;
+              if (Math.abs(na.mesh.position.z) > 6.5) na.v.z *= -1;
+            }
+            for (var x = 0; x < nodes.length && segCount < maxSegments; x++) {
+              for (var y = x + 1; y < nodes.length && segCount < maxSegments; y++) {
+                var pa = nodes[x].mesh.position, pb = nodes[y].mesh.position;
+                if (pa.distanceTo(pb) < 3.1) {
+                  posAttr.setXYZ(segCount * 2, pa.x, pa.y, pa.z);
+                  posAttr.setXYZ(segCount * 2 + 1, pb.x, pb.y, pb.z);
+                  segCount++;
+                }
+              }
+            }
+            lineGeo.setDrawRange(0, segCount * 2);
+            posAttr.needsUpdate = true;
+
+            planes.forEach(function (plane, idx) { plane.rotation.y += 0.0012 * (idx % 2 ? 1 : -1); });
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(renderFrame);
+          }
+          renderFrame();
+
+          window.addEventListener('resize', function () {
+            var w2 = heroForExperimental.clientWidth, h2 = heroForExperimental.clientHeight;
+            renderer.setSize(w2, h2, false);
+            camera.aspect = w2 / h2;
+            camera.updateProjectionMatrix();
+          }, { passive: true });
+        } catch (err) {
+          start2dParticles(canvas); // WebGL context/scene setup failed at runtime — degrade gracefully
+        }
+      }
+
+      var particleCanvas = experimentalLayer.querySelector('.experimental-particles');
+      if (particleCanvas && heroForExperimental) {
+        if (!isMobile && webglSupported()) {
+          loadThreeJs(function (loaded) {
+            if (loaded) start3dScene(particleCanvas);
+            else start2dParticles(particleCanvas); // CDN failed to load — fall back gracefully
+          });
+        } else {
+          start2dParticles(particleCanvas); // no WebGL, or mobile's simplified path
         }
       }
 
@@ -452,14 +626,58 @@
         });
       }
 
-      // ---- Rotating shapes: rotation/scale tied to scroll progress ----
+      // ---- "Camera" tilt: rotating the whole experimental layer (its
+      // children keep their own real translateZ depths, so this genuinely
+      // separates them, not just a flat parallax offset) toward the cursor —
+      // Layered Depth's "subtle mouse-driven camera/parallax" and Geometric
+      // Playground's "subtle cursor response". ----
+      if ((experimentalKey === 'layered-depth' || experimentalKey === 'geometric-playground')
+        && !isMobile && window.matchMedia('(pointer: fine)').matches && heroForExperimental) {
+        heroForExperimental.addEventListener('mousemove', function (e) {
+          var rect = heroForExperimental.getBoundingClientRect();
+          var mx = (e.clientX - rect.left) / rect.width - 0.5;
+          var my = (e.clientY - rect.top) / rect.height - 0.5;
+          experimentalLayer.style.transform = 'rotateX(' + (my * -6) + 'deg) rotateY(' + (mx * 8) + 'deg)';
+        });
+        heroForExperimental.addEventListener('mouseleave', function () {
+          experimentalLayer.style.transform = 'rotateX(0deg) rotateY(0deg)';
+        });
+      }
+
+      // ---- Rotating shapes: rotation/scale tied to scroll progress
+      // (Geometric Playground's own pinned scene below drives them instead,
+      // via scan-progress, so this generic scroll tween is skipped there to
+      // avoid two different scroll mechanisms fighting the same elements). ----
       var rotatingShapes = Array.prototype.slice.call(experimentalLayer.querySelectorAll('.rotating-shape'));
-      if (rotatingShapes.length && hasScrollTrigger && heroForExperimental) {
+      if (rotatingShapes.length && hasScrollTrigger && heroForExperimental && experimentalKey !== 'geometric-playground') {
         rotatingShapes.forEach(function (shape, idx) {
           window.gsap.to(shape, {
             rotation: idx % 2 === 0 ? 140 : -110, scale: 1.15, ease: 'none',
             scrollTrigger: { trigger: heroForExperimental, start: 'top top', end: 'bottom top', scrub: true },
           });
+        });
+      }
+
+      // ---- Geometric Playground: a real pinned scanner scene — the hero
+      // holds in place for a short extra scroll distance while the scan
+      // beam sweeps top-to-bottom exactly once, tied to scroll progress
+      // (not an infinite CSS loop), lighting up whichever geometric shape
+      // it currently crosses. Skipped on mobile (its simplified/static path
+      // keeps the original lightweight CSS loop instead — see base.css). ----
+      if (experimentalKey === 'geometric-playground' && hasScrollTrigger && heroForExperimental && !isMobile) {
+        var scanBeam = experimentalLayer.querySelector('.scan-line');
+        if (scanBeam) scanBeam.style.animation = 'none'; // JS now drives its position
+        window.ScrollTrigger.create({
+          trigger: heroForExperimental, start: 'top top', end: '+=700', pin: true, scrub: true,
+          onUpdate: function (self) {
+            if (scanBeam) { scanBeam.style.top = (self.progress * 100) + '%'; scanBeam.style.opacity = 1; }
+            var heroRect = heroForExperimental.getBoundingClientRect();
+            rotatingShapes.forEach(function (shape) {
+              var r = shape.getBoundingClientRect();
+              var relY = (r.top + r.height / 2 - heroRect.top) / heroRect.height;
+              shape.classList.toggle('scan-lit', Math.abs(relY - self.progress) < 0.09);
+            });
+          },
         });
       }
 
